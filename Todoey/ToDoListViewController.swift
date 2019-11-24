@@ -10,12 +10,17 @@ import UIKit
 
 class ToDoListViewController: UITableViewController {
     
-    var itemArray = ["find mike", "buy eggos", "destroy demogorgon"]
+    var itemArray = ["find mike", "buy eggos", "destroy demogorgon"]// hard coded, need a way to persist data
     
+    let defaults = UserDefaults.standard // userdefaults used to persist small ammount of data
+     
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
+        if let items = defaults.array(forKey: "ToDoListArray") as? [String] {// use if let cos app crases if appended array is empty
+        itemArray = items
+        }
     }
     
     //MARK - Tableview Dtasource methods
@@ -56,6 +61,11 @@ class ToDoListViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             // what will hapen when the user clicks the "add item" button
             self.itemArray.append(textField.text!)// apending/adding new item to initial array
+            
+            self.defaults.set(self.itemArray, forKey: "ToDoListArray")// saving the new apended item to user defaults
+            //user defaults are saved in p.list, needs key value pairs
+            // to persist the data back to the app from user defaults, we need the filepath of the app sandbox, ID of simulator and sandbox
+            //retrieve data in viewDidLoad
             
             self.tableView.reloadData()// reloads rows in the section for new inputs
         }
