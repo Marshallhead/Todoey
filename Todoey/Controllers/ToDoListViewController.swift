@@ -10,31 +10,38 @@ import UIKit
 
 class ToDoListViewController: UITableViewController {
     
-  //  var itemArray = ["find mike", "buy eggos", "destroy demogorgon"]// hard coded, need a way to persist new data
+    //  var itemArray = ["find mike", "buy eggos", "destroy demogorgon"]// hard coded, need a way to persist new data
     var itemArray = [Item]()// inheriting from items properties(title and done/checkmark) in data model
     
-    let defaults = UserDefaults.standard // userdefaults used to persist small ammount of data
-     
+    let defaults = UserDefaults.standard // userdefaults used to persist small ammount of data. this is a P.LIST created by apple and cannot be modified heavily. for custom p.list use NScoder/core/realm
+    //Item.plist is the custom plist and is customisable as per the item data model with a title and done property, userdefaults.plist will be a dictionary and  no customs
+    
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    // searchpath directory is the document directory like docs folder on desktop, location is in the users domain mask so like pc user(admin) location where all info of this app is stored. appending path is adding a plist to the doc we just created
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
-        let newItem = Item()
-        newItem.title = "Find Mike"
-        itemArray.append(newItem)
-        
-        let newItem2 = Item()
-        newItem2.title = "Buy Eggos"
-        itemArray.append(newItem2)
-        
-        let newItem3 = Item()
-        newItem3.title = "Destroy Demorgogon"
-        itemArray.append(newItem3)
         
         
-        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {// use if let cos app crases if appended array is empty
-        itemArray = items// populate item array upon app opening
-        }
+//
+//        let newItem = Item()
+//        newItem.title = "Find Mike"
+//        itemArray.append(newItem)
+//
+//        let newItem2 = Item()
+//        newItem2.title = "Buy Eggos"
+//        itemArray.append(newItem2)
+//
+//        let newItem3 = Item()
+//        newItem3.title = "Destroy Demorgogon"
+//        itemArray.append(newItem3)
+        
+        loadItems()
+        
+//        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {// use if let cos app crases if appended array is empty
+//            itemArray = items// populate item array upon app opening
+//        }(NSDefaults code)
     }
     
     //MARK - Tableview Dtasource methods
@@ -53,39 +60,40 @@ class ToDoListViewController: UITableViewController {
         //value = condition? valueIfTrue : valaueIfFalse
         
         cell.accessoryType = item.done ? .checkmark : .none
-//
-//        if item.done == true {// if row is selected.done, add checkmark acessory
-//            cell.accessoryType = .checkmark
-//        } else {
-//            cell.accessoryType = .none
-//        }
+        //
+        //        if item.done == true {// if row is selected.done, add checkmark acessory
+        //            cell.accessoryType = .checkmark
+        //        } else {
+        //            cell.accessoryType = .none
+        //        }
         return cell
     }
     // MARK - Tableview delegate methods
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-       // print(itemArray[indexPath.row])
+        // print(itemArray[indexPath.row])
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done //if selected item has no checkmark
-//
-//        if itemArray[indexPath.row].done == false { //if selected item has no checkmark
-//            itemArray[indexPath.row].done = true// then put the checkmark
-//        } else {
-//            itemArray[indexPath.row].done = false//otherwise remove checkmark
-//        }
+        saveItems()//done property saved in plist upon toggling checkmark
         
-//        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark{
-//            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-//
-//        } else {
-//            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-//        }
+        //        if itemArray[indexPath.row].done == false { //if selected item has no checkmark
+        //            itemArray[indexPath.row].done = true// then put the checkmark
+        //        } else {
+        //            itemArray[indexPath.row].done = false//otherwise remove checkmark
+        //        }
+        
+        //        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark{
+        //            tableView.cellForRow(at: indexPath)?.accessoryType = .none
+        //
+        //        } else {
+        //            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
+        //        }
         tableView.reloadData()// forces table view to call its delegate method and reload data inside, letting checkmark show
         tableView.deselectRow(at: indexPath, animated: true)
         
     }
-//MARK - ADD New Items
-
+    //MARK - ADD New Items
+    
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         
@@ -99,12 +107,15 @@ class ToDoListViewController: UITableViewController {
             
             self.itemArray.append(newItem)// apending/adding new item to initial array
             
-            self.defaults.set(self.itemArray, forKey: "ToDoListArray")// saving the new apended item to user defaults
+            
+            // self.defaults.set(self.itemArray, forKey: "ToDoListArray")// saving the new apended item to user defaults
             //user defaults are saved in p.list, needs key value pairs
             // to persist the data back to the app from user defaults, we need the filepath of the app sandbox, ID of simulator and sandbox
             //retrieve data in viewDidLoad
+            //CODE FOR USER DEFAULTS
             
-            self.tableView.reloadData()// reloads rows in the section for new inputs
+           // self.tableView.reloadData()// reloads rows in the section for new inputs
+            self.saveItems()// this aloows items added to the table to be saved in the plist
         }
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
@@ -113,7 +124,29 @@ class ToDoListViewController: UITableViewController {
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
     }
-    
+    //MARK: - Model Mnipulation method
+    func saveItems() {
+        let encoder = PropertyListEncoder()// Using encoder instead of user default below. this encoder will encoder our array into the custom p.list just created
+        do{
+            let data = try encoder.encode(itemArray)//set data as itemarray then encoding the item array into the p.list
+            try data.write(to: dataFilePath!)//put the data/item array into the filepath
+            
+        }catch {
+            print("Error encoding item array, \(error)")
+        }
+        self.tableView.reloadData()
+    }
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!) {
+            let decoder = PropertyListDecoder()
+            do {
+            itemArray = try decoder.decode([Item].self, from: data)
+            }catch {
+                print("Error decoding item array, \(error)")
+
+            }
 }
 
 
+}
+}
