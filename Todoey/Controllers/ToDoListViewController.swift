@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
     
@@ -16,32 +17,35 @@ class ToDoListViewController: UITableViewController {
     let defaults = UserDefaults.standard // userdefaults used to persist small ammount of data. this is a P.LIST created by apple and cannot be modified heavily. for custom p.list use NScoder/core/realm
     //Item.plist is the custom plist and is customisable as per the item data model with a title and done property, userdefaults.plist will be a dictionary and  no customs
     
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
-    // searchpath directory is the document directory like docs folder on desktop, location is in the users domain mask so like pc user(admin) location where all info of this app is stored. appending path is adding a plist to the doc we just created
+  //  let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")searchpath directory is the document directory like docs folder on desktop, location is in the users domain mask so like pc user(admin) location where all info of this app is stored. appending path is adding a plist to the doc we just created
+    //NSCODER CODE
+    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    // grabbing the object from a class we could have simply said Appdeletgate.persistentcontainer.context, but instead we use the share.uiapp when the phone is running and set it as app delegate first. THE "C" in CRUD creating the context that grabs persistent container and grab a reference to the context in that persistent container
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
         
-//
-//        let newItem = Item()
-//        newItem.title = "Find Mike"
-//        itemArray.append(newItem)
-//
-//        let newItem2 = Item()
-//        newItem2.title = "Buy Eggos"
-//        itemArray.append(newItem2)
-//
-//        let newItem3 = Item()
-//        newItem3.title = "Destroy Demorgogon"
-//        itemArray.append(newItem3)
+        //
+        //        let newItem = Item()
+        //        newItem.title = "Find Mike"
+        //        itemArray.append(newItem)
+        //
+        //        let newItem2 = Item()
+        //        newItem2.title = "Buy Eggos"
+        //        itemArray.append(newItem2)
+        //
+        //        let newItem3 = Item()
+        //        newItem3.title = "Destroy Demorgogon"
+        //        itemArray.append(newItem3)
         
         loadItems()
         
-//        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {// use if let cos app crases if appended array is empty
-//            itemArray = items// populate item array upon app opening
-//        }(NSDefaults code)
+        //        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {// use if let cos app crases if appended array is empty
+        //            itemArray = items// populate item array upon app opening
+        //        }(NSDefaults code)
     }
     
     //MARK - Tableview Dtasource methods
@@ -73,7 +77,11 @@ class ToDoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // print(itemArray[indexPath.row])
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done //if selected item has no checkmark
+      /*  context.delete(itemArray[indexPath.row])//deleteing here is just deleting data in temp area, this should ve saved and it gets commited to the persistent container using saveitems() below. context.delete should be called first otherwise index will be out of range
+        
+        itemArray.remove(at: indexPath.row)//updates tem array and leaves it blank, but the previous data is still in the SQLite container in the backend. THE "D" IN CRUD*/ 
+        
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done //if selected item has no checkmark..THE "U" in CRUD
         saveItems()//done property saved in plist upon toggling checkmark
         
         //        if itemArray[indexPath.row].done == false { //if selected item has no checkmark
@@ -102,8 +110,11 @@ class ToDoListViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             // what will hapen when the user clicks the "add item" button
             
-            let newItem = Item()
+            
+            let newItem = Item(context: self.context)
+            //  let newItem = Item()...CODE FOR NSCODER
             newItem.title = textField.text!
+            newItem.done = false//needed in  to give it a value cos we set our title and done in coredata model as not optional so we need
             
             self.itemArray.append(newItem)// apending/adding new item to initial array
             
@@ -114,7 +125,7 @@ class ToDoListViewController: UITableViewController {
             //retrieve data in viewDidLoad
             //CODE FOR USER DEFAULTS
             
-           // self.tableView.reloadData()// reloads rows in the section for new inputs
+            // self.tableView.reloadData()// reloads rows in the section for new inputs
             self.saveItems()// this aloows items added to the table to be saved in the plist
         }
         alert.addTextField { (alertTextField) in
@@ -126,27 +137,45 @@ class ToDoListViewController: UITableViewController {
     }
     //MARK: - Model Mnipulation method
     func saveItems() {
-        let encoder = PropertyListEncoder()// Using encoder instead of user default below. this encoder will encoder our array into the custom p.list just created
+        //        let encoder = PropertyListEncoder()// Using encoder instead of user default below. this encoder will encoder our array into the custom p.list just created
+        //        do{
+        //            let data = try encoder.encode(itemArray)//set data as itemarray then encoding the item array into the p.list
+        //            try data.write(to: dataFilePath!)//put the data/item array into the filepath
+        //
+        //        }catch {
+        //            print("Error encoding item array, \(error)")
+        //        }
+        //        self.tableView.reloadData()
+        //    } NSCODER CODE
+        
+        
         do{
-            let data = try encoder.encode(itemArray)//set data as itemarray then encoding the item array into the p.list
-            try data.write(to: dataFilePath!)//put the data/item array into the filepath
-            
+            try context.save()
+            // context is where you CRUD,Create, read, update and destroy befor saving it to the persistent container
         }catch {
-            print("Error encoding item array, \(error)")
+            print("Error saving context, \(error)")
         }
         self.tableView.reloadData()
     }
+    
     func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-            itemArray = try decoder.decode([Item].self, from: data)
-            }catch {
-                print("Error decoding item array, \(error)")
+//        if let data = try? Data(contentsOf: dataFilePath!) {
+//            let decoder = PropertyListDecoder()
+//            do {
+//                itemArray = try decoder.decode([Item].self, from: data)
+//            }catch {
+//                print("Error decoding item array, \(error)")
+//
+//            }
+//        }NSCODER CODE
+        //THE "R" in CRUD
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        //need to specify data type, array of items
+        do {
+           itemArray = try context.fetch(request)
+        }catch {
+            print("Error fetching data from context, \(error)")
 
-            }
-}
-
-
-}
+        }
+    }
 }
