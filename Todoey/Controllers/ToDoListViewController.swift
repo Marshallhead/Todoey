@@ -13,6 +13,12 @@ class ToDoListViewController: UITableViewController {
     
     //  var itemArray = ["find mike", "buy eggos", "destroy demogorgon"]// hard coded, need a way to persist new data
     var itemArray = [Item]()// inheriting from items properties(title and done/checkmark) in data model
+   
+    var selectedCategory : Category?{
+        didSet{// as soon as "selected categories get set with a value(means clicked on so it gets an indexrow count) it will perform code in the surly braces(loaditems) which loads up the todolistview controller from category view controller
+            loadItems()
+        }
+    }// created for categoryview controller
     
     let defaults = UserDefaults.standard // userdefaults used to persist small ammount of data. this is a P.LIST created by apple and cannot be modified heavily. for custom p.list use NScoder/core/realm
     //Item.plist is the custom plist and is customisable as per the item data model with a title and done property, userdefaults.plist will be a dictionary and  no customs
@@ -41,7 +47,8 @@ class ToDoListViewController: UITableViewController {
         //        newItem3.title = "Destroy Demorgogon"
         //        itemArray.append(newItem3)
         
-        loadItems()
+    
+     //   loadItems()-- called in selected category code cose categoryVC is now root
         
         //        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {// use if let cos app crases if appended array is empty
         //            itemArray = items// populate item array upon app opening
@@ -103,6 +110,7 @@ class ToDoListViewController: UITableViewController {
     //MARK - ADD New Items
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+       
         var textField = UITextField()
         
         let alert = UIAlertController(title: "Add New Todey Item", message: "", preferredStyle: .alert)
@@ -115,6 +123,7 @@ class ToDoListViewController: UITableViewController {
             //  let newItem = Item()...CODE FOR NSCODER
             newItem.title = textField.text!
             newItem.done = false//needed in  to give it a value cos we set our title and done in coredata model as not optional so we need
+            newItem.parentCategory = self.selectedCategory//added after category created. this means any item created after selecting a created category falls under that category as its child
             
             self.itemArray.append(newItem)// apending/adding new item to initial array
             
@@ -158,7 +167,8 @@ class ToDoListViewController: UITableViewController {
         self.tableView.reloadData()
     }
     
-    func loadItems() {
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {// adding internal and external parameter so that load items can be called  elsewhere(searchbutton pressed)
+        
 //        if let data = try? Data(contentsOf: dataFilePath!) {
 //            let decoder = PropertyListDecoder()
 //            do {
@@ -169,13 +179,58 @@ class ToDoListViewController: UITableViewController {
 //            }
 //        }NSCODER CODE
         //THE "R" in CRUD
-        let request : NSFetchRequest<Item> = Item.fetchRequest()
-        //need to specify data type, array of items
+       // let request : NSFetchRequest<Item> = Item.fetchRequest()//in other to read from database , always have to create a request and specify the dataType
+        //CODE NOT NEEDED SINCE ITS SET AS DEFAULT VALUE IN LoadItems()
+        
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)//added after category created.QUERY DATABASE. this means parent category of all items we want to display must have its name property to match the current selected category
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates:[categoryPredicate, additionalPredicate])
+        }else {
+            request.predicate = categoryPredicate
+        }
+//        let compundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate])
+//        request.predicate = compundPredicate
+//
         do {
            itemArray = try context.fetch(request)
         }catch {
             print("Error fetching data from context, \(error)")
 
         }
+        tableView.reloadData()
     }
+}
+    //MARK: - Search Bar Methods
+    
+    extension ToDoListViewController: UISearchBarDelegate {// create search bar in storyboard first and link it to controller(yellow button) click delegate
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request : NSFetchRequest<Item> = Item.fetchRequest()//reading in the database
+        
+       /* let predicate*//*request. commented out after categoryvc added*/let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)//for all items in itemarray, as we type in searchbar(searchbar.text), look for the similar ones and replace it in %@.[cd] makes search case insensitive.....QUERYING DATA
+       
+        //request.predicate = predicate// adding query to database
+        
+        /*let sortDescriptor<added square brackets after commenting out> */ request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]//result should bome back with a title and in ascending letter order
+       
+        // request.sortDescriptors = [sortDescriptor]
+        loadItems(with: request, predicate: predicate)
+//        do {
+//            itemArray = try context.fetch(request)// assign result of fetch in item array
+//               }catch {
+//                   print("Error fetching data from context, \(error)")
+//
+//               }
+//        tableView.reloadData()// repopulate table view (ALLIncorporated in loaditems(with request))
+        }
+        func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+            if searchBar.text?.count == 0 { // after earching and xi, reload table
+               loadItems()
+                DispatchQueue.main.async {// dispatchqueue is responsible for assigning tasks to main or background threads. we want main thread 
+                searchBar.resignFirstResponder()// keyboard and cursor disappears
+                }
+                
+            }
+        }
+
 }
