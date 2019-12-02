@@ -14,26 +14,28 @@ import RealmSwift
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
+var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         
-       /* let data = Data()
-        data.name = "Marshall"
-        data.age = 15
+        // print(Realm.Configuration.defaultConfiguration.fileURL) ---find realm data path
         
-        do {
-        let realm = try Realm()
-           try realm.write {// comit to persistent storage
-                realm.add(data)
-            }
-        }catch {
+        /* let data = Data()
+        data.name = "Marshall"
+        data.age = 15 testing to see if realm database works*/
+        
+     /*   do {
+            _ = try Realm()
+         //  try realm.write {// comit to persistent storage
+           //     realm.add(data)
+           // }
+        } catch {
             print("Error initializing new realm, \(error)")
-        } testing to see if realm database works*/
+        }*/
 
         
-        return true
+        return true 
     }
 
     // MARK: UISceneSession Lifecycle
@@ -103,7 +105,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
                 }
             }
-        }
+        } 
 
     }
 
